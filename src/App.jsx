@@ -131,9 +131,9 @@ function App() {
     }
   };
 
-  const YOUTUBE_API_KEY = 'AIzaSyBKFTFBgLIC_4A8zDqhB6FxXUt1yBMKlm4';
-  const BASEROW_TOKEN = 'CzYl5l6YtWEctWM5teeMuKUVgKRsZCoR';
-  const BASEROW_API_URL = 'https://baserow-production-83af.up.railway.app/api/database/rows/table/638/';
+  const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
+  const BASEROW_TOKEN = import.meta.env.VITE_BASEROW_TOKEN;
+  const BASEROW_API_URL = import.meta.env.VITE_BASEROW_API_URL;
 
   const getChannelId = async (url) => {
     try {
