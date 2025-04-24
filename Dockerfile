@@ -1,23 +1,10 @@
-FROM node:16
-
+FROM node:20
 WORKDIR /app
-
-# Copiar package.json y package-lock.json
 COPY package*.json ./
-
-# Instalar dependencias
-RUN npm install --legacy-peer-deps
-
-# Copiar el resto de los archivos
+RUN npm install
 COPY . .
-
-# Dar permisos al directorio
-RUN chmod -R 777 /app
-
-# Construir la aplicación
 RUN npm run build
 
-EXPOSE 4173
-
-# Comando para ejecutar la aplicación
-CMD ["npm", "run", "preview"]
+ENV NODE_ENV production
+EXPOSE $PORT
+CMD ["npm", "run", "preview"] 
