@@ -127,9 +127,9 @@ function App() {
       }
 
       const dataToSave = {
-        NombreCanal: channelData.snippet?.title || channelData.name,
-        CantidadVistas: parseInt(channelData.statistics?.viewCount || channelData.views) || 0,
-        CantidadLike: parseInt(channelData.statistics?.likeCount || channelData.likes) || 0
+        field_6162: channelData.snippet?.title || channelData.name,
+        field_6165: parseInt(channelData.statistics?.viewCount || channelData.views) || 0,
+        field_6166: parseInt(channelData.statistics?.likeCount || channelData.likes) || 0
       };
 
       const response = await axios.post(BASEROW_API_URL, dataToSave, {
@@ -157,7 +157,7 @@ function App() {
 
   return (
     <Container className="py-5">
-      <h1 className="mb-4">Seguimiento de Canales de YouTube</h1>
+      <h3 className="mb-4">Data YouTubeApp</h3>
       
       <Form onSubmit={handleSubmit} className="mb-4">
         <Form.Group className="mb-3">
@@ -190,4 +190,23 @@ function App() {
                   <th>Likes</th>
                 </tr>
               </thead>
-       
+              <tbody>
+                {channels.map((channel, index) => (
+                  <tr key={index}>
+                    <td>{channel.name}</td>
+                    <td>{channel.views}</td>
+                    <td>{channel.likes}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          ) : (
+            <Alert variant="info" className="mt-3">No hay canales registrados aún.</Alert>
+          )}
+        </>
+      )}
+    </Container>
+  );
+}
+
+export default App;
