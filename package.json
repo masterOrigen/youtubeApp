@@ -1,4 +1,5 @@
 {
+
     "name": "youtubeapp",
     "private": true,
     "version": "0.0.0",
@@ -31,4 +32,3 @@
         "eslint-plugin-react-refresh": "^0.4.4",
         "vite": "^6.0.3"
     }
-}
