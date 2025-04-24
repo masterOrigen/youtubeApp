@@ -1,26 +1,23 @@
-FROM node:20-alpine
+FROM node:20
 
 WORKDIR /app
 
-# Copiar archivos de dependencias primero para mejor caching
+# Copiar archivos de dependencias
 COPY package.json package-lock.json ./
 
-# Instalar dependencias
-RUN npm install --production
+# Instalar dependencias con permisos adecuados
+RUN npm install --unsafe-perm
 
-# Copiar el resto de los archivos
+# Copiar archivos
 COPY . .
 
-# Build de la aplicación
+# Build con permisos adecuados
 RUN npm run build
-
-# Limpiar caché innecesaria
-RUN npm cache clean --force
 
 # Variables de entorno
 ENV NODE_ENV=production
 ENV PORT=$PORT
 EXPOSE $PORT
 
-# Comando de inicio para producción
+# Comando de inicio
 CMD ["npm", "run", "serve"]
