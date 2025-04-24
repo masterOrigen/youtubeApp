@@ -1,23 +1,29 @@
-FROM node:20
+FROM node:20-alpine
 
+# Configuración inicial
 WORKDIR /app
 
-# Copiar archivos de dependencias
+# 1. Copiar solo los archivos necesarios para instalar dependencias
 COPY package.json package-lock.json ./
 
-# Instalar dependencias con permisos adecuados
-RUN npm install --unsafe-perm
+# 2. Instalar dependencias correctamente
+RUN npm install --unsafe-perm --legacy-peer-deps && \
+    npm cache clean --force && \
+    chown -R node:node /app
 
-# Copiar archivos
-COPY . .
+# 3. Cambiar a usuario no-root para mayor seguridad
+USER node
 
-# Build con permisos adecuados
+# 4. Copiar el resto de archivos con los permisos correctos
+COPY --chown=node:node . .
+
+# 5. Construir la aplicación
 RUN npm run build
 
-# Variables de entorno
+# 6. Configuración para producción
 ENV NODE_ENV=production
 ENV PORT=$PORT
 EXPOSE $PORT
 
-# Comando de inicio
+# 7. Comando de inicio optimizado
 CMD ["npm", "run", "serve"]
