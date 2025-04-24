@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Form, Button, Table, Alert } from 'react-bootstrap';
+import { FaYoutube } from 'react-icons/fa';
 import axios from 'axios';
+
+const formatNumber = (number) => {
+  if (number === null || number === undefined) return '0';
+  return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
 
 function App() {
   const [channelUrl, setChannelUrl] = useState('');
@@ -9,36 +15,37 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchChannels = async () => {
-      setTableLoading(true);
-      try {
-        const response = await axios.get(BASEROW_API_URL, {
-          headers: {
-            'Authorization': `Token ${BASEROW_TOKEN}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        if (response.data.results && response.data.results.length > 0) {
-          const channelsData = response.data.results.map(channel => ({
-            name: channel.NombreCanal,
-            views: channel.CantidadVistas,
-            likes: channel.CantidadLike
-          }));
-          setChannels(channelsData);
-        } else {
-          setChannels([]);
+  const refreshChannels = async () => {
+    setTableLoading(true);
+    try {
+      const response = await axios.get(BASEROW_API_URL, {
+        headers: {
+          'Authorization': `Token ${BASEROW_TOKEN}`,
+          'Content-Type': 'application/json'
         }
-      } catch (error) {
-        console.error('Error al cargar datos de Baserow:', error);
-        setError('Error al cargar los canales. Por favor, recarga la página.');
+      });
+      if (response.data.results && response.data.results.length > 0) {
+        const channelsData = response.data.results.map(channel => ({
+          name: channel.field_6162,
+          views: channel.field_6165,
+          subscribers: channel.field_6166,
+          videos: channel.field_6167
+        }));
+        setChannels(channelsData);
+      } else {
         setChannels([]);
-      } finally {
-        setTableLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Error al cargar datos de Baserow:', error);
+      setError('Error al cargar los canales. Por favor, recarga la página.');
+      setChannels([]);
+    } finally {
+      setTableLoading(false);
+    }
+  };
 
-    fetchChannels();
+  useEffect(() => {
+    refreshChannels();
   }, []);
 
   const handleSubmit = async (e) => {
@@ -54,7 +61,8 @@ function App() {
         },
         statistics: {
           viewCount: channelData.statistics.viewCount,
-          likeCount: channelData.statistics.likeCount || 0
+          subscriberCount: channelData.statistics.subscriberCount || 0,
+          videoCount: channelData.statistics.videoCount || 0
         }
       };
       
@@ -63,10 +71,11 @@ function App() {
       const newChannel = {
         name: channelData.snippet.title,
         views: channelData.statistics.viewCount,
-        likes: channelData.statistics.likeCount || 0
+        subscribers: channelData.statistics.subscriberCount || 0,
+        videos: channelData.statistics.videoCount || 0
       };
       
-      setChannels([...channels, newChannel]);
+      await refreshChannels();
       setChannelUrl('');
     } catch (error) {
       setError(error.message);
@@ -129,7 +138,8 @@ function App() {
       const dataToSave = {
         field_6162: channelData.snippet?.title || channelData.name,
         field_6165: parseInt(channelData.statistics?.viewCount || channelData.views) || 0,
-        field_6166: parseInt(channelData.statistics?.likeCount || channelData.likes) || 0
+        field_6166: parseInt(channelData.statistics?.subscriberCount || channelData.subscribers) || 0,
+        field_6167: parseInt(channelData.statistics?.videoCount || channelData.videos) || 0
       };
 
       const response = await axios.post(BASEROW_API_URL, dataToSave, {
@@ -156,8 +166,11 @@ function App() {
   };
 
   return (
-    <Container className="py-5">
-      <h3 className="mb-4">Data YouTubeApp</h3>
+    <Container className="mt-4">
+     <h4 className="d-flex align-items-center gap-2">
+        <FaYoutube className="text-danger" size={30} />
+        Brain-Tube
+      </h4>
       
       <Form onSubmit={handleSubmit} className="mb-4">
         <Form.Group className="mb-3">
@@ -167,43 +180,46 @@ function App() {
             value={channelUrl}
             onChange={(e) => setChannelUrl(e.target.value)}
             placeholder="Ingrese la URL del canal de YouTube"
-            required
+            disabled={loading}
           />
         </Form.Group>
-        <Button type="submit" disabled={loading}>
+        
+        <Button variant="primary" type="submit" disabled={loading}>
           {loading ? 'Guardando...' : 'Guardar Canal'}
         </Button>
       </Form>
 
       {error && <Alert variant="danger">{error}</Alert>}
 
+      <h4 className="mb-3">Canales Guardados</h4>
       {tableLoading ? (
-        <Alert variant="info" className="mt-3">Cargando canales...</Alert>
+        <p>Cargando datos...</p>
       ) : (
-        <>
-          {channels.length > 0 ? (
-            <Table striped bordered hover>
-              <thead>
-                <tr>
-                  <th>Nombre del Canal</th>
-                  <th>Vistas</th>
-                  <th>Likes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {channels.map((channel, index) => (
-                  <tr key={index}>
-                    <td>{channel.name}</td>
-                    <td>{channel.views}</td>
-                    <td>{channel.likes}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          ) : (
-            <Alert variant="info" className="mt-3">No hay canales registrados aún.</Alert>
-          )}
-        </>
+        <Table striped bordered hover>
+          <thead>
+            <tr>
+              <th>Nombre del Canal</th>
+              <th>Vistas</th>
+              <th>Suscriptores</th>
+              <th>Videos</th>
+            </tr>
+          </thead>
+          <tbody>
+            {channels.map((channel, index) => (
+              <tr key={index}>
+                <td>{channel.name}</td>
+                <td>{formatNumber(channel.views)}</td>
+                <td>{formatNumber(channel.subscribers)}</td>
+                <td>{formatNumber(channel.videos)}</td>
+              </tr>
+            ))}
+            {channels.length === 0 && (
+              <tr>
+                <td colSpan="4" className="text-center">No hay canales guardados</td>
+              </tr>
+            )}
+          </tbody>
+        </Table>
       )}
     </Container>
   );
