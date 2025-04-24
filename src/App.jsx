@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Form, Button, Table, Alert } from 'react-bootstrap';
 import { FaYoutube } from 'react-icons/fa';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTrash } from '@fortawesome/free-solid-svg-icons';
+import Swal from 'sweetalert2';
 import axios from 'axios';
 
 const formatNumber = (number) => {
@@ -15,6 +18,49 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(true);
 
+  const handleDelete = async (channelName) => {
+    const result = await Swal.fire({
+      title: '¿Estás seguro?',
+      text: `¿Deseas eliminar el canal ${channelName}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        // Buscar el ID del canal en los resultados originales
+        const channelToDelete = channels.find(ch => ch.name === channelName);
+        if (!channelToDelete) throw new Error('Canal no encontrado');
+
+        await axios.delete(`${BASEROW_API_URL}${channelToDelete.id}/`, {
+          headers: {
+            'Authorization': `Token ${BASEROW_TOKEN}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        await Swal.fire(
+          '¡Eliminado!',
+          'El canal ha sido eliminado correctamente.',
+          'success'
+        );
+
+        await refreshChannels();
+      } catch (error) {
+        console.error('Error al eliminar el canal:', error);
+        Swal.fire(
+          'Error',
+          'No se pudo eliminar el canal. Por favor, intenta nuevamente.',
+          'error'
+        );
+      }
+    }
+  };
+
   const refreshChannels = async () => {
     setTableLoading(true);
     try {
@@ -26,6 +72,7 @@ function App() {
       });
       if (response.data.results && response.data.results.length > 0) {
         const channelsData = response.data.results.map(channel => ({
+          id: channel.id,
           name: channel.field_6162,
           views: channel.field_6165,
           subscribers: channel.field_6166,
@@ -84,9 +131,9 @@ function App() {
     }
   };
 
-  const YOUTUBE_API_KEY = 'AIzaSyBKFTFBgLIC_4A8zDqhB6FxXUt1yBMKlm4';
-  const BASEROW_TOKEN = 'CzYl5l6YtWEctWM5teeMuKUVgKRsZCoR';
-  const BASEROW_API_URL = 'https://baserow-production-83af.up.railway.app/api/database/rows/table/638/';
+  const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
+  const BASEROW_TOKEN = import.meta.env.VITE_BASEROW_TOKEN;
+  const BASEROW_API_URL = import.meta.env.VITE_BASEROW_API_URL;
 
   const getChannelId = async (url) => {
     try {
@@ -198,10 +245,11 @@ function App() {
         <Table striped bordered hover>
           <thead>
             <tr>
-              <th>Nombre del Canal</th>
+              <th>Canal</th>
               <th>Vistas</th>
               <th>Suscriptores</th>
               <th>Videos</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -211,11 +259,20 @@ function App() {
                 <td>{formatNumber(channel.views)}</td>
                 <td>{formatNumber(channel.subscribers)}</td>
                 <td>{formatNumber(channel.videos)}</td>
+                <td>
+                  <Button
+                    variant="link"
+                    className="text-danger"
+                    onClick={() => handleDelete(channel.name)}
+                  >
+                    <FontAwesomeIcon icon={faTrash} />
+                  </Button>
+                </td>
               </tr>
             ))}
             {channels.length === 0 && (
               <tr>
-                <td colSpan="4" className="text-center">No hay canales guardados</td>
+                <td colSpan="5" className="text-center">No hay canales guardados</td>
               </tr>
             )}
           </tbody>
