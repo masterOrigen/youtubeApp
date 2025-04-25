@@ -3,13 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "start": "vite preview --port $PORT --host",
-    "preview": "vite preview --port 3000 --host",
-    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
-  },
+ "scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "start": "serve -s dist -l $PORT",  // ¡Usa 'serve' para producción!
+  "preview": "vite preview --port 3000"
+},
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
