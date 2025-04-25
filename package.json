@@ -6,7 +6,7 @@
  "scripts": {
   "dev": "vite",
   "build": "vite build",
-  "start": "serve -s dist -l $PORT",  // ¡Usa 'serve' para producción!
+  "start": "serve -s dist -l $PORT",
   "preview": "vite preview --port 3000"
 },
   "dependencies": {
