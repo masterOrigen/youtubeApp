@@ -50,7 +50,7 @@ function App() {
         });
 
         await Swal.fire(
-          'u00a1Eliminado!',
+          'Eliminado!',
           'El canal ha sido eliminado correctamente.',
           'success'
         );
