@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Form, Button, Table, Alert } from 'react-bootstrap';
-import { FaYoutube } from 'react-icons/fa';
+import { Container, Form, Button, Table, Alert, Modal, ListGroup, Navbar, Nav } from 'react-bootstrap';
+import { FaYoutube, FaHome, FaSearch } from 'react-icons/fa';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faTrash, faEye, faThumbsUp, faComment, faEye as faEyeView } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';
 import axios from 'axios';
 
@@ -17,16 +17,22 @@ function App() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(true);
-
+  const [selectedChannel, setSelectedChannel] = useState(null);
+  const [channelVideos, setChannelVideos] = useState([]);
+  const [loadingVideos, setLoadingVideos] = useState(false);
+  const [pageLoading, setPageLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState('home'); // 'home', 'channel', 'search'
+  const [searchTerm, setSearchTerm] = useState('');
+  
   const handleDelete = async (channelName) => {
     const result = await Swal.fire({
-      title: '¿Estás seguro?',
-      text: `¿Deseas eliminar el canal ${channelName}?`,
+      title: 'u00bfEstu00e1s seguro?',
+      text: `u00bfDeseas eliminar el canal ${channelName}?`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
       cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Sí, eliminar',
+      confirmButtonText: 'Su00ed, eliminar',
       cancelButtonText: 'Cancelar'
     });
 
@@ -44,7 +50,7 @@ function App() {
         });
 
         await Swal.fire(
-          '¡Eliminado!',
+          'u00a1Eliminado!',
           'El canal ha sido eliminado correctamente.',
           'success'
         );
@@ -84,7 +90,7 @@ function App() {
       }
     } catch (error) {
       console.error('Error al cargar datos de Baserow:', error);
-      setError('Error al cargar los canales. Por favor, recarga la página.');
+      setError('Error al cargar los canales. Por favor, recarga la pu00e1gina.');
       setChannels([]);
     } finally {
       setTableLoading(false);
@@ -142,7 +148,7 @@ function App() {
       const match = url.match(regex);
       if (!match) {
         console.error('URL no coincide con el formato esperado:', url);
-        throw new Error('URL de canal inválida. Debe ser una URL de canal de YouTube (ejemplo: https://youtube.com/c/nombrecanal)');
+        throw new Error('URL de canal invu00e1lida. Debe ser una URL de canal de YouTube (ejemplo: https://youtube.com/c/nombrecanal)');
       }
       
       console.log('ID del canal encontrado:', match[1]);
@@ -156,8 +162,8 @@ function App() {
         response = await axios.get(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${match[1]}&key=${YOUTUBE_API_KEY}`);
         
         if (!response.data.items || response.data.items.length === 0) {
-          console.error('No se encontró información del canal');
-          throw new Error('No se encontró el canal. Verifica la URL e intenta nuevamente.');
+          console.error('No se encontro información del canal');
+          throw new Error('No se encontro el canal. Verifica la URL e intenta nuevamente.');
         }
         
         // Obtenemos los detalles del canal usando el ID encontrado
@@ -165,7 +171,7 @@ function App() {
         response = await axios.get(`https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}&key=${YOUTUBE_API_KEY}`);
       }
       
-      console.log('Información del canal obtenida:', response.data.items[0]);
+      console.log('Información del canal obtenido:', response.data.items[0]);
       return response.data.items[0];
     } catch (error) {
       console.error('Error en getChannelId:', error);
@@ -197,7 +203,7 @@ function App() {
       });
 
       if (!response.data) {
-        throw new Error('No se recibió respuesta de Baserow');
+        throw new Error('No se recibio una respuesta de Baserow');
       }
 
       console.log('Datos guardados exitosamente en Baserow:', response.data);
@@ -212,71 +218,408 @@ function App() {
     }
   };
 
+  // Funciu00f3n para manejar la navegaciu00f3n entre pu00e1ginas
+  const handleNavigation = (page) => {
+    setPageLoading(true);
+    setTimeout(() => {
+      setCurrentPage(page);
+      if (page === 'home') {
+        setSelectedChannel(null);
+      }
+      setPageLoading(false);
+    }, 300); // Pequeu00f1o retraso para mostrar la animaciu00f3n
+  };
+
+  const handleViewChannel = async (channelId, channelName) => {
+    try {
+      setLoadingVideos(true);
+      setSelectedChannel({ id: channelId, name: channelName });
+      setPageLoading(true); // Activar el gif de carga para la transiciu00f3n de pu00e1gina
+      setCurrentPage('channel'); // Cambiar a la pu00e1gina de canal
+      const channelInfo = channels.find(ch => ch.id === channelId);
+      if (!channelInfo) throw new Error('Canal no encontrado');
+      
+      // Buscar el canal en YouTube para obtener su ID real
+      const response = await axios.get(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${channelInfo.name}&key=${YOUTUBE_API_KEY}`);
+      
+      if (!response.data.items || response.data.items.length === 0) {
+        throw new Error('No se pudo encontrar el canal en YouTube');
+      }
+      
+      const youtubeChannelId = response.data.items[0].id.channelId;
+      
+      // Obtener los u00faltimos 10 videos del canal
+      const videosResponse = await axios.get(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${youtubeChannelId}&maxResults=10&order=date&type=video&key=${YOUTUBE_API_KEY}`
+      );
+      
+      if (videosResponse.data.items && videosResponse.data.items.length > 0) {
+        setChannelVideos(videosResponse.data.items);
+        // Obtener detalles adicionales (estadu00edsticas) para cada video
+        const videoIds = videosResponse.data.items.map(video => video.id.videoId).join(',');
+        const videoDetailsResponse = await axios.get(
+          `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds}&key=${YOUTUBE_API_KEY}`
+        );
+        
+        // Combinar los datos de los videos con sus estadu00edsticas
+        const videosWithStats = videosResponse.data.items.map(video => {
+          const stats = videoDetailsResponse.data.items.find(item => item.id === video.id.videoId)?.statistics || {
+            viewCount: 0,
+            likeCount: 0,
+            commentCount: 0
+          };
+          
+          return {
+            ...video,
+            statistics: {
+              viewCount: stats.viewCount || 0,
+              likeCount: stats.likeCount || 0,
+              commentCount: stats.commentCount || 0
+            }
+          };
+        });
+        
+        setChannelVideos(videosWithStats);
+      }
+    } catch (error) {
+      console.error('Error al obtener videos del canal:', error);
+      Swal.fire(
+        'Error',
+        'No se pudieron cargar los videos del canal. Por favor, intenta nuevamente.',
+        'error'
+      );
+      setSelectedChannel(null);
+      setCurrentPage('home');
+    } finally {
+      setLoadingVideos(false);
+      setPageLoading(false); // Desactivar el gif de carga cuando termina la carga
+    }
+  };
+
+  // Funciu00f3n para buscar videos por tu00e9rmino
+  const handleSearchByTerm = async (e) => {
+    e.preventDefault();
+    if (!searchTerm.trim()) {
+      Swal.fire('Error', 'Por favor ingresa un tu00e9rmino de bu00fasqueda', 'error');
+      return;
+    }
+    
+    setPageLoading(true);
+    setLoadingVideos(true);
+    
+    try {
+      const response = await axios.get(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${searchTerm}&type=video&key=${YOUTUBE_API_KEY}`
+      );
+      
+      if (response.data.items && response.data.items.length > 0) {
+        // Obtener detalles adicionales (estadu00edsticas) para cada video
+        const videoIds = response.data.items.map(video => video.id.videoId).join(',');
+        const videoDetailsResponse = await axios.get(
+          `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds}&key=${YOUTUBE_API_KEY}`
+        );
+        
+        // Combinar los datos de los videos con sus estadu00edsticas
+        const videosWithStats = response.data.items.map(video => {
+          const stats = videoDetailsResponse.data.items.find(item => item.id === video.id.videoId)?.statistics || {
+            viewCount: 0,
+            likeCount: 0,
+            commentCount: 0
+          };
+          
+          return {
+            ...video,
+            statistics: {
+              viewCount: stats.viewCount || 0,
+              likeCount: stats.likeCount || 0,
+              commentCount: stats.commentCount || 0
+            }
+          };
+        });
+        
+        setChannelVideos(videosWithStats);
+      } else {
+        setChannelVideos([]);
+      }
+    } catch (error) {
+      console.error('Error al buscar videos:', error);
+      Swal.fire(
+        'Error',
+        'No se pudieron cargar los resultados de bu00fasqueda. Por favor, intenta nuevamente.',
+        'error'
+      );
+      setChannelVideos([]);
+    } finally {
+      setLoadingVideos(false);
+      setPageLoading(false);
+    }
+  };
+
+  // Renderizado de la lista de videos (compartido entre la vista de canal y bu00fasqueda)
+  const renderVideosList = () => {
+    if (loadingVideos) {
+      return (
+        <div className="text-center py-4">
+          <p>Cargando videos...</p>
+        </div>
+      );
+    }
+    
+    if (channelVideos.length === 0) {
+      return <Alert variant="info">No se encontraron videos.</Alert>;
+    }
+    
+    return (
+      <div>
+        <div className="row">
+          {channelVideos.map((video) => (
+            <div className="col-md-6 mb-4" key={video.id.videoId}>
+              <div className="card h-100">
+                <div className="card-body">
+                  <div className="d-flex mb-3">
+                    <img 
+                      src={video.snippet.thumbnails.medium.url} 
+                      alt={video.snippet.title} 
+                      className="me-3" 
+                      style={{ width: '160px', height: '90px', objectFit: 'cover' }}
+                    />
+                    <div>
+                      <h5 className="card-title">{video.snippet.title}</h5>
+                      <p className="text-muted small">
+                        {new Date(video.snippet.publishedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <div className="d-flex align-items-center">
+                      <span className="me-3">
+                        <FontAwesomeIcon icon={faEyeView} className="text-secondary me-1" />
+                        {formatNumber(video.statistics.viewCount)} visitas
+                      </span>
+                      <span className="me-3">
+                        <FontAwesomeIcon icon={faThumbsUp} className="text-primary me-1" />
+                        {formatNumber(video.statistics.likeCount)} likes
+                      </span>
+                      <span>
+                        <FontAwesomeIcon icon={faComment} className="text-success me-1" />
+                        {formatNumber(video.statistics.commentCount)} comentarios
+                      </span>
+                    </div>
+                  </div>
+                  <a href={`https://www.youtube.com/watch?v=${video.id.videoId}`}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="btn btn-sm btn-danger">
+                    Ver en YouTube
+                  </a>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Container className="mt-4">
-     <h4 className="d-flex align-items-center gap-2">
-        <FaYoutube className="text-danger" size={30} />
-        Brain-Tube
-      </h4>
-      
-      <Form onSubmit={handleSubmit} className="mb-4">
-        <Form.Group className="mb-3">
-          <Form.Label>URL del Canal</Form.Label>
-          <Form.Control
-            type="text"
-            value={channelUrl}
-            onChange={(e) => setChannelUrl(e.target.value)}
-            placeholder="Ingrese la URL del canal de YouTube"
-            disabled={loading}
-          />
-        </Form.Group>
-        
-        <Button variant="primary" type="submit" disabled={loading}>
-          {loading ? 'Guardando...' : 'Guardar Canal'}
-        </Button>
-      </Form>
+      {/* Header con navegaciu00f3n */}
+      <Navbar bg="light" expand="lg" className="mb-4 rounded shadow-sm">
+        <Container>
+          <Navbar.Brand className="d-flex align-items-center gap-2">
+            <FaYoutube className="text-danger" size={30} />
+            Brain-Tube
+          </Navbar.Brand>
+          <Navbar.Toggle aria-controls="basic-navbar-nav" />
+          <Navbar.Collapse id="basic-navbar-nav">
+            <Nav className="ms-auto">
+              <Button 
+                variant={currentPage === 'home' ? 'primary' : 'outline-primary'} 
+                className="me-2 d-flex align-items-center gap-2"
+                onClick={() => handleNavigation('home')}
+              >
+                <FaHome /> Inicio
+              </Button>
+              <Button 
+                variant={currentPage === 'search' ? 'primary' : 'outline-primary'} 
+                className="d-flex align-items-center gap-2"
+                onClick={() => handleNavigation('search')}
+              >
+                <FaSearch /> Buscar por palabra y/o término
+              </Button>
+            </Nav>
+          </Navbar.Collapse>
+        </Container>
+      </Navbar>
 
-      {error && <Alert variant="danger">{error}</Alert>}
+      {/* Overlay de carga para transiciones entre pu00e1ginas */}
+      {pageLoading && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9999
+          }}
+        >
+          <div className="text-center">
+            <div 
+              className="spinner-border text-danger" 
+              style={{ width: '3rem', height: '3rem' }} 
+              role="status"
+            >
+              <span className="visually-hidden">Cargando...</span>
+            </div>
+            <p className="mt-2">Cargando...</p>
+          </div>
+        </div>
+      )}
 
-      <h4 className="mb-3">Canales Guardados</h4>
-      {tableLoading ? (
-        <p>Cargando datos...</p>
-      ) : (
-        <Table striped bordered hover>
-          <thead>
-            <tr>
-              <th>Canal</th>
-              <th>Vistas</th>
-              <th>Suscriptores</th>
-              <th>Videos</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {channels.map((channel, index) => (
-              <tr key={index}>
-                <td>{channel.name}</td>
-                <td>{formatNumber(channel.views)}</td>
-                <td>{formatNumber(channel.subscribers)}</td>
-                <td>{formatNumber(channel.videos)}</td>
-                <td>
-                  <Button
-                    variant="link"
-                    className="text-danger"
-                    onClick={() => handleDelete(channel.name)}
-                  >
-                    <FontAwesomeIcon icon={faTrash} />
-                  </Button>
-                </td>
-              </tr>
-            ))}
-            {channels.length === 0 && (
-              <tr>
-                <td colSpan="5" className="text-center">No hay canales guardados</td>
-              </tr>
-            )}
-          </tbody>
-        </Table>
+      {/* Pu00e1gina de inicio (lista de canales) */}
+      {currentPage === 'home' && (
+        <>
+          <Form onSubmit={handleSubmit} className="mb-4">
+            <Form.Group className="mb-3">
+              <Form.Label>URL del Canal</Form.Label>
+              <Form.Control
+                type="text"
+                value={channelUrl}
+                onChange={(e) => setChannelUrl(e.target.value)}
+                placeholder="Ingrese la URL del canal de YouTube"
+                disabled={loading}
+              />
+            </Form.Group>
+            
+            <Button variant="primary" type="submit" disabled={loading}>
+              {loading ? 'Guardando...' : 'Guardar Canal'}
+            </Button>
+          </Form>
+          
+          <h4 className="mb-3">Canales Guardados</h4>
+          {tableLoading ? (
+            <p>Cargando datos...</p>
+          ) : (
+            <Table striped bordered hover>
+              <thead>
+                <tr>
+                  <th>Canal</th>
+                  <th>Vistas</th>
+                  <th>Suscriptores</th>
+                  <th>Videos</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {channels.map((channel, index) => (
+                  <tr key={index}>
+                    <td>{channel.name}</td>
+                    <td>{formatNumber(channel.views)}</td>
+                    <td>{formatNumber(channel.subscribers)}</td>
+                    <td>{formatNumber(channel.videos)}</td>
+                    <td>
+                      <Button
+                        variant="link"
+                        className="text-danger"
+                        onClick={() => handleDelete(channel.name)}
+                      >
+                        <FontAwesomeIcon icon={faTrash} />
+                      </Button>
+                      <Button
+                        variant="link"
+                        className="text-primary"
+                        onClick={() => handleViewChannel(channel.id, channel.name)}
+                        title="Ver detalles del canal"
+                      >
+                        <FontAwesomeIcon icon={faEye} />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+                {channels.length === 0 && (
+                  <tr>
+                    <td colSpan="5" className="text-center">No hay canales guardados</td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
+          )}
+        </>
+      )}
+
+      {/* Pu00e1gina de canal individual */}
+      {currentPage === 'channel' && selectedChannel && (
+        <div className="channel-single-page">
+          <div className="d-flex justify-content-between align-items-center mb-4">
+            <h3 className="d-flex align-items-center gap-2">
+              <FaYoutube className="text-danger" size={30} />
+              Canal: {selectedChannel.name}
+            </h3>
+          </div>
+          <div className="row">
+            <div className="col-md-4">
+              <div className="card">
+                <div className="card-body">
+                  <h5 className="card-title">Información del Canal</h5>
+                  {channels.map((channel) => {
+                    if (channel.id === selectedChannel.id) {
+                      return (
+                        <div key={channel.id}>
+                          <p><strong>Nombre:</strong> {channel.name}</p>
+                          <p><strong>Vistas totales:</strong> {formatNumber(channel.views)}</p>
+                          <p><strong>Suscriptores:</strong> {formatNumber(channel.subscribers)}</p>
+                          <p><strong>Videos:</strong> {formatNumber(channel.videos)}</p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <h4 className="mb-3 my-3">Últimos 10 videos</h4>
+          {renderVideosList()}
+        </div>
+      )}
+
+      {/* Pu00e1gina de bu00fasqueda por tu00e9rmino */}
+      {currentPage === 'search' && (
+        <div className="search-page">
+          <h3 className="mb-4">Buscar videos por término o palabra clave</h3>
+          
+          <Form onSubmit={handleSearchByTerm} className="mb-4">
+            <div className="d-flex gap-2">
+              <Form.Control
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Ingresa tu busqueda"
+                disabled={loadingVideos}
+              />
+              <Button 
+                variant="primary" 
+                type="submit" 
+                disabled={loadingVideos}
+                className="d-flex align-items-center gap-2"
+              >
+                <FaSearch /> Buscar
+              </Button>
+            </div>
+          </Form>
+          
+          {channelVideos.length > 0 && (
+            <h4 className="mb-3">Resultados de la busqueda</h4>
+          )}
+          
+          {renderVideosList()}
+        </div>
       )}
     </Container>
   );
