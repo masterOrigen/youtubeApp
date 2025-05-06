@@ -592,7 +592,7 @@ function App() {
       {/* Pu00e1gina de bu00fasqueda por tu00e9rmino */}
       {currentPage === 'search' && (
         <div className="search-page">
-          <h3 className="mb-4">Buscar videos por término o palabra clave</h3>
+          <h5 className="mb-4">Buscar videos por término o palabra clave</h5>
           
           <Form onSubmit={handleSearchByTerm} className="mb-4">
             <div className="d-flex gap-2">
