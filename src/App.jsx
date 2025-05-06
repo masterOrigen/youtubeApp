@@ -26,8 +26,8 @@ function App() {
   
   const handleDelete = async (channelName) => {
     const result = await Swal.fire({
-      title: 'u00bfEstu00e1s seguro?',
-      text: `u00bfDeseas eliminar el canal ${channelName}?`,
+      title: 'Estas seguro?',
+      text: `Deseas eliminar el canal ${channelName}?`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
