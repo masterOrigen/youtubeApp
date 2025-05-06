@@ -225,6 +225,14 @@ function App() {
       setCurrentPage(page);
       if (page === 'home') {
         setSelectedChannel(null);
+      }      if (page === 'search') {
+        // Limpiar resultados anteriores al navegar a la pu00e1gina de bu00fasqueda
+        setChannelVideos([]);
+        setSearchTerm('');
+      }      if (page === 'search') {
+        // Limpiar resultados anteriores al navegar a la pu00e1gina de bu00fasqueda
+        setChannelVideos([]);
+        setSearchTerm('');
       }
       setPageLoading(false);
     }, 300); // Pequeu00f1o retraso para mostrar la animaciu00f3n
@@ -293,8 +301,10 @@ function App() {
     } finally {
       setLoadingVideos(false);
       setPageLoading(false); // Desactivar el gif de carga cuando termina la carga
-    }
-  };
+    }    
+    // Limpiar resultados anteriores antes de realizar una nueva bu00fasqueda
+    setChannelVideos([]);
+      };
 
   // Funciu00f3n para buscar videos por tu00e9rmino
   const handleSearchByTerm = async (e) => {
@@ -309,7 +319,7 @@ function App() {
     
     try {
       const response = await axios.get(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${searchTerm}&type=video&key=${YOUTUBE_API_KEY}`
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=14&q=${searchTerm}&type=video&key=${YOUTUBE_API_KEY}`
       );
       
       if (response.data.items && response.data.items.length > 0) {
@@ -337,7 +347,14 @@ function App() {
           };
         });
         
-        setChannelVideos(videosWithStats);
+        // Ordenar los videos por fecha de publicaciu00f3n (mu00e1s recientes primero)
+        const sortedVideos = videosWithStats.sort((a, b) => {
+          const dateA = new Date(a.snippet.publishedAt);
+          const dateB = new Date(b.snippet.publishedAt);
+          return dateB - dateA; // Orden descendente (mu00e1s reciente primero)
+        });
+        
+        setChannelVideos(sortedVideos);
       } else {
         setChannelVideos([]);
       }
@@ -552,15 +569,10 @@ function App() {
         </>
       )}
 
-      {/* Pu00e1gina de canal individual */}
+      {/* Pagina de canal individual */}
       {currentPage === 'channel' && selectedChannel && (
         <div className="channel-single-page">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h3 className="d-flex align-items-center gap-2">
-              <FaYoutube className="text-danger" size={30} />
-              Canal: {selectedChannel.name}
-            </h3>
-          </div>
+
           <div className="row">
             <div className="col-md-4">
               <div className="card">
@@ -613,11 +625,20 @@ function App() {
               </Button>
             </div>
           </Form>
-          
-          {channelVideos.length > 0 && (
-            <h4 className="mb-3">Resultados de la busqueda</h4>
+          {channelVideos.length > 0 ? (
+            <>
+              <h4 className="mb-3">Últimos 14 videos relacionados con tu búsqueda (ordenados por fecha más reciente)</h4>
+              {renderVideosList()}
+            </>
+          ) : (
+            searchTerm.trim() && !loadingVideos ? (
+              <Alert variant="info">No se encontraron videos relacionados con tu búsqueda.</Alert>
+            ) : null
           )}
           
+          {!searchTerm.trim() && !loadingVideos && (
+            <Alert variant="secondary">Ingresa un término de búsqueda y presiona el botón Buscar para ver resultados.</Alert>
+          )}
           {renderVideosList()}
         </div>
       )}
