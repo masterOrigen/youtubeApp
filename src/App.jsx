@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Form, Button, Table, Alert, Modal, ListGroup, Navbar, Nav } from 'react-bootstrap';
-import { FaYoutube, FaHome, FaSearch } from 'react-icons/fa';
+import { FaYoutube, FaHome, FaSearch, FaDatabase } from 'react-icons/fa';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash, faEye, faThumbsUp, faComment, faEye as faEyeView } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';
@@ -162,7 +162,7 @@ function App() {
         response = await axios.get(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${match[1]}&key=${YOUTUBE_API_KEY}`);
         
         if (!response.data.items || response.data.items.length === 0) {
-          console.error('No se encontro información del canal');
+          console.error('No se encontro informaciu00f3n del canal');
           throw new Error('No se encontro el canal. Verifica la URL e intenta nuevamente.');
         }
         
@@ -171,14 +171,14 @@ function App() {
         response = await axios.get(`https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}&key=${YOUTUBE_API_KEY}`);
       }
       
-      console.log('Información del canal obtenido:', response.data.items[0]);
+      console.log('Informaciu00f3n del canal obtenido:', response.data.items[0]);
       return response.data.items[0];
     } catch (error) {
       console.error('Error en getChannelId:', error);
       if (error.response) {
         console.error('Respuesta de error de la API:', error.response.data);
       }
-      throw new Error(error.message || 'Error al obtener información del canal');
+      throw new Error(error.message || 'Error al obtener informaciu00f3n del canal');
     }
   };
 
@@ -225,11 +225,8 @@ function App() {
       setCurrentPage(page);
       if (page === 'home') {
         setSelectedChannel(null);
-      }      if (page === 'search') {
-        // Limpiar resultados anteriores al navegar a la pu00e1gina de bu00fasqueda
-        setChannelVideos([]);
-        setSearchTerm('');
-      }      if (page === 'search') {
+      }
+      if (page === 'search') {
         // Limpiar resultados anteriores al navegar a la pu00e1gina de bu00fasqueda
         setChannelVideos([]);
         setSearchTerm('');
@@ -240,36 +237,66 @@ function App() {
 
   const handleViewChannel = async (channelId, channelName) => {
     try {
+      // Limpiar resultados anteriores antes de realizar una nueva búsqueda
+      setChannelVideos([]);
       setLoadingVideos(true);
       setSelectedChannel({ id: channelId, name: channelName });
-      setPageLoading(true); // Activar el gif de carga para la transiciu00f3n de pu00e1gina
-      setCurrentPage('channel'); // Cambiar a la pu00e1gina de canal
+      setPageLoading(true); // Activar el gif de carga para la transición de página
+      setCurrentPage('channel'); // Cambiar a la página de canal
+      
       const channelInfo = channels.find(ch => ch.id === channelId);
       if (!channelInfo) throw new Error('Canal no encontrado');
       
       // Buscar el canal en YouTube para obtener su ID real
-      const response = await axios.get(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${channelInfo.name}&key=${YOUTUBE_API_KEY}`);
+      let response;
+      
+      // Primero intentamos una búsqueda exacta con comillas
+      response = await axios.get(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q="${encodeURIComponent(channelInfo.name)}"&key=${YOUTUBE_API_KEY}`);
+      
+      // Si no hay resultados, intentamos sin comillas
+      if (!response.data.items || response.data.items.length === 0) {
+        response = await axios.get(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(channelInfo.name)}&key=${YOUTUBE_API_KEY}`);
+      }
+      
+      // Si aún no hay resultados, intentamos con una búsqueda más amplia
+      if (!response.data.items || response.data.items.length === 0) {
+        const simplifiedName = channelInfo.name.split(' ')[0]; // Tomamos solo la primera palabra
+        response = await axios.get(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(simplifiedName)}&key=${YOUTUBE_API_KEY}`);
+      }
       
       if (!response.data.items || response.data.items.length === 0) {
         throw new Error('No se pudo encontrar el canal en YouTube');
       }
       
-      const youtubeChannelId = response.data.items[0].id.channelId;
+      // Intentamos encontrar una coincidencia exacta o la más cercana
+      let youtubeChannelId = null;
+      const exactMatch = response.data.items.find(item => 
+        item.snippet.title.toLowerCase() === channelInfo.name.toLowerCase() ||
+        item.snippet.channelTitle.toLowerCase() === channelInfo.name.toLowerCase()
+      );
       
-      // Obtener los u00faltimos 10 videos del canal
+      if (exactMatch) {
+        youtubeChannelId = exactMatch.id.channelId;
+      } else {
+        // Si no hay coincidencia exacta, tomamos el primer resultado
+        youtubeChannelId = response.data.items[0].id.channelId;
+      }
+      
+      console.log('Canal encontrado en YouTube:', youtubeChannelId);
+      
+      // Obtener los últimos 10 videos del canal
       const videosResponse = await axios.get(
         `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${youtubeChannelId}&maxResults=10&order=date&type=video&key=${YOUTUBE_API_KEY}`
       );
       
       if (videosResponse.data.items && videosResponse.data.items.length > 0) {
-        setChannelVideos(videosResponse.data.items);
-        // Obtener detalles adicionales (estadu00edsticas) para cada video
+        // Obtener detalles adicionales (estadísticas) para cada video
         const videoIds = videosResponse.data.items.map(video => video.id.videoId).join(',');
         const videoDetailsResponse = await axios.get(
           `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds}&key=${YOUTUBE_API_KEY}`
         );
         
-        // Combinar los datos de los videos con sus estadu00edsticas
+        // Combinar los datos de los videos con sus estadísticas
         const videosWithStats = videosResponse.data.items.map(video => {
           const stats = videoDetailsResponse.data.items.find(item => item.id === video.id.videoId)?.statistics || {
             viewCount: 0,
@@ -287,7 +314,16 @@ function App() {
           };
         });
         
-        setChannelVideos(videosWithStats);
+        // Ordenar los videos por fecha de publicación (más recientes primero)
+        const sortedVideos = videosWithStats.sort((a, b) => {
+          const dateA = new Date(a.snippet.publishedAt);
+          const dateB = new Date(b.snippet.publishedAt);
+          return dateB - dateA; // Orden descendente (más reciente primero)
+        });
+        
+        setChannelVideos(sortedVideos);
+      } else {
+        setChannelVideos([]);
       }
     } catch (error) {
       console.error('Error al obtener videos del canal:', error);
@@ -301,12 +337,10 @@ function App() {
     } finally {
       setLoadingVideos(false);
       setPageLoading(false); // Desactivar el gif de carga cuando termina la carga
-    }    
-    // Limpiar resultados anteriores antes de realizar una nueva bu00fasqueda
-    setChannelVideos([]);
-      };
+    }
+  };
 
-  // Funciu00f3n para buscar videos por tu00e9rmino
+  // Función para buscar videos por término
   const handleSearchByTerm = async (e) => {
     e.preventDefault();
     if (!searchTerm.trim()) {
@@ -455,7 +489,7 @@ function App() {
                 className="me-2 d-flex align-items-center gap-2"
                 onClick={() => handleNavigation('home')}
               >
-                <FaHome /> Inicio
+                <FaDatabase /> Canales de youtube guardados en la base de datos
               </Button>
               <Button 
                 variant={currentPage === 'search' ? 'primary' : 'outline-primary'} 
@@ -498,7 +532,7 @@ function App() {
         </div>
       )}
 
-      {/* Pu00e1gina de inicio (lista de canales) */}
+      {/* Pagina de inicio (lista de canales) */}
       {currentPage === 'home' && (
         <>
           <Form onSubmit={handleSubmit} className="mb-4">
@@ -627,7 +661,7 @@ function App() {
           </Form>
           {channelVideos.length > 0 ? (
             <>
-              <h4 className="mb-3">Últimos 14 videos relacionados con tu búsqueda (ordenados por fecha más reciente)</h4>
+              <h4 className="mb-3">Últimos videos relacionados con tu búsqueda (ordenados por fecha más reciente)</h4>
               {renderVideosList()}
             </>
           ) : (
@@ -636,7 +670,7 @@ function App() {
             ) : null
           )}
           
-          {!searchTerm.trim() && !loadingVideos && (
+          {searchTerm.trim() === '' && !loadingVideos && (
             <Alert variant="secondary">Ingresa un término de búsqueda y presiona el botón Buscar para ver resultados.</Alert>
           )}
           {renderVideosList()}
