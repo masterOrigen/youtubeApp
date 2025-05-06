@@ -673,7 +673,7 @@ function App() {
           {searchTerm.trim() === '' && !loadingVideos && (
             <Alert variant="secondary">Ingresa un término de búsqueda y presiona el botón Buscar para ver resultados.</Alert>
           )}
-          {renderVideosList()}
+         
         </div>
       )}
     </Container>
