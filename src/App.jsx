@@ -32,7 +32,7 @@ function App() {
       showCancelButton: true,
       confirmButtonColor: '#d33',
       cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Su00ed, eliminar',
+      confirmButtonText: 'Si, eliminar',
       cancelButtonText: 'Cancelar'
     });
 
